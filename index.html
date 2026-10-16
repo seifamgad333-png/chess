@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>شطرنج</title>
 <style>
-:root{--bg:#eef2f4;--sf:#fff;--ink:#1d2b36;--mut:#5d6e7a;--ln:#d5dde2;--br:#0f6e6e;--bi:#fff;--bs:min(96vw,480px);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#eef2f4;--sf:#fff;--ink:#1d2b36;--mut:#5d6e7a;--ln:#d5dde2;--br:#0f6e6e;--bi:#fff;--bs:min(calc(100vw - 8px),calc(100svh - 230px),720px);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root{--bg:#13202a;--sf:#1b2c38;--ink:#e8eef2;--mut:#9fb0bb;--ln:#2c4252;--br:#3fb5b0;--bi:#0d1a22}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.6}
-main{max-width:520px;margin:0 auto;padding:12px}
+main{max-width:760px;margin:0 auto;padding:8px 4px}
 h1{margin:0 0 8px;font-size:26px}h2{margin:0 0 8px;font-size:17px}
 .panel{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px}
 label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
@@ -21,12 +21,15 @@ select{width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(
 #nw{width:100%;margin-top:8px;background:var(--br);color:var(--bi);font-weight:700}
 .bar{display:flex;justify-content:space-between;align-items:center;max-width:var(--bs);margin:0 auto;font-weight:600}
 .clk{font-variant-numeric:tabular-nums;background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:2px 10px;min-width:64px;text-align:center}
-#board{width:var(--bs);aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);margin:6px auto;direction:ltr;border-radius:6px;overflow:hidden}
-.sq{border:0;padding:0;position:relative;display:flex;align-items:center;justify-content:center;font-size:calc(var(--bs)/8*.8);line-height:1;cursor:pointer}
-.sq.l{background:#eaeef1}.sq.d{background:#7a99ab}
+#board{width:var(--bs);aspect-ratio:1;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));margin:6px auto;direction:ltr;border-radius:6px;overflow:hidden}
+.sq{border:0;padding:0;min-width:0;min-height:0;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;font-size:calc(var(--bs)/8*.86);line-height:1;cursor:pointer}
+#board{--lt:#f0d9b5;--dk:#b58863}#board[data-t="g"]{--lt:#eeeed2;--dk:#769656}#board[data-t="b"]{--lt:#dee3e6;--dk:#8ca2ad}
+.sq.l{background:var(--lt)}.sq.d{background:var(--dk)}
+.co{position:absolute;font:600 calc(var(--bs)/8*.17) system-ui,sans-serif;pointer-events:none;opacity:.85}.rk{top:2px;left:3px}.fl{bottom:1px;right:3px}
+.sq.l .co{color:var(--dk)}.sq.d .co{color:var(--lt)}
 .sq i{font-style:normal;pointer-events:none}
 i.w{color:#fff;text-shadow:0 0 1px #000,0 0 2px #000,0 0 3px #000}
-i.b{color:#111}
+i.b{color:#111;text-shadow:0 0 2px rgba(255,255,255,.45)}
 .sel{background:#e7c94f!important}
 .lm{box-shadow:inset 0 0 0 100px rgba(231,201,79,.35)}
 .ht{box-shadow:inset 0 0 0 4px #2fb36b}
@@ -48,6 +51,8 @@ i.b{color:#111}
     <select id="co"><option value="w">أبيض</option><option value="b">أسود</option><option value="r">عشوائي</option></select>
     <label for="ti">الوقت لكل لاعب</label>
     <select id="ti"><option value="0">بدون ساعة</option><option value="5">5 دقايق</option><option value="10">10 دقايق</option></select>
+    <label for="th">شكل الرقعة</label>
+    <select id="th"><option value="c">كلاسيك (بني)</option><option value="g">أخضر</option><option value="b">أزرق رمادي</option></select>
     <button class="btn main" id="go" type="button">ابدأ اللعب</button>
   </section>
   <section id="play" hidden>
@@ -65,7 +70,8 @@ i.b{color:#111}
   <section class="panel" id="acc"></section>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.2/chess.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script>window.Chess||document.write('<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.js"><\/scr'+'ipt>')</script>
 <script>
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
@@ -124,7 +130,7 @@ function render(){
     if(last&&(last[0]===sq||last[1]===sq))cl+=" lm";
     if(hint&&(hint[0]===sq||hint[1]===sq))cl+=" ht";
     if(ks===sq)cl+=" ck";
-    h+='<button class="'+cl+'" data-s="'+sq+'" aria-label="'+sq+'">'+(pc?'<i class="'+pc.color+'">'+GL[pc.type]+'</i>':"")+'</button>';
+    h+='<button class="'+cl+'" data-s="'+sq+'" aria-label="'+sq+'">'+(pc?'<i class="'+pc.color+'">'+GL[pc.type]+'</i>':"")+(c===0?'<span class="co rk">'+rk+'</span>':"")+(r===7?'<span class="co fl">'+"abcdefgh"[f]+'</span>':"")+'</button>';
   }
   $("board").innerHTML=h;
   if(!over)$("msg").textContent=game.turn()===me?("دورك"+(game.in_check()?" - كش!":"")):"الكمبيوتر بيفكر...";
@@ -195,6 +201,8 @@ $("hi").onclick=function(){
 $("rs").onclick=function(){if(game&&!over)finish("resign")};
 $("nw").onclick=function(){$("play").hidden=true;$("setup").hidden=false};
 $("go").onclick=function(){
+  if(typeof Chess==="undefined"){$("setup").insertAdjacentHTML("beforeend",'<div class="muted">تعذّر تحميل مكتبة الشطرنج. اتأكد من الإنترنت وحدّث الصفحة.</div>');return}
+  $("board").dataset.t=$("th").value;try{localStorage.setItem("th",$("th").value)}catch(e){}
   lvl=+$("lv").value;var c=$("co").value;
   me=c==="r"?(Math.random()<0.5?"w":"b"):c;
   tmax=+$("ti").value*60000;T={w:tmax,b:tmax};lastT=Date.now();
@@ -204,6 +212,7 @@ $("go").onclick=function(){
   render();clocks();
   if(game.turn()!==me)cpu();
 };
+try{var _t=localStorage.getItem("th");if(_t)$("th").value=_t}catch(e){}
 </script>
 
 <script type="module">
