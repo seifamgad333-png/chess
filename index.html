@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>شطرنج</title>
+<style>
+:root{--bg:#eef2f4;--sf:#fff;--ink:#1d2b36;--mut:#5d6e7a;--ln:#d5dde2;--br:#0f6e6e;--bi:#fff;--bs:min(96vw,480px);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root{--bg:#13202a;--sf:#1b2c38;--ink:#e8eef2;--mut:#9fb0bb;--ln:#2c4252;--br:#3fb5b0;--bi:#0d1a22}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.6}
+main{max-width:520px;margin:0 auto;padding:12px}
+h1{margin:0 0 8px;font-size:26px}h2{margin:0 0 8px;font-size:17px}
+.panel{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+select{width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--ink)}
+.btn{font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(--ln);border-radius:10px;background:var(--sf);color:var(--ink);cursor:pointer}
+.btn.main{width:100%;margin-top:14px;background:var(--br);color:var(--bi);border-color:var(--br);font-weight:700;font-size:17px;padding:12px}
+.btns{display:flex;gap:8px;justify-content:center;margin-top:8px}
+.btns .btn,#nw{flex:1}
+#nw{width:100%;margin-top:8px;background:var(--br);color:var(--bi);font-weight:700}
+.bar{display:flex;justify-content:space-between;align-items:center;max-width:var(--bs);margin:0 auto;font-weight:600}
+.clk{font-variant-numeric:tabular-nums;background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:2px 10px;min-width:64px;text-align:center}
+#board{width:var(--bs);aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);margin:6px auto;direction:ltr;border-radius:6px;overflow:hidden}
+.sq{border:0;padding:0;position:relative;display:flex;align-items:center;justify-content:center;font-size:calc(var(--bs)/8*.8);line-height:1;cursor:pointer}
+.sq.l{background:#eaeef1}.sq.d{background:#7a99ab}
+.sq i{font-style:normal;pointer-events:none}
+i.w{color:#fff;text-shadow:0 0 1px #000,0 0 2px #000,0 0 3px #000}
+i.b{color:#111}
+.sel{background:#e7c94f!important}
+.lm{box-shadow:inset 0 0 0 100px rgba(231,201,79,.35)}
+.ht{box-shadow:inset 0 0 0 4px #2fb36b}
+.ck{box-shadow:inset 0 0 0 100px rgba(229,83,75,.55)}
+.cap{box-shadow:inset 0 0 0 4px rgba(15,110,110,.75)}
+.dot::after{content:"";width:28%;height:28%;border-radius:50%;background:rgba(15,110,110,.55);position:absolute}
+#msg{text-align:center;font-weight:700;min-height:28px;margin-top:4px}
+.muted{color:var(--mut);font-size:14px;margin-bottom:8px}
+:focus-visible{outline:3px solid var(--br);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <section id="setup" class="panel">
+    <h1>♟ شطرنج</h1>
+    <label for="lv">مستوى الكمبيوتر</label>
+    <select id="lv"><option value="1">سهل</option><option value="2" selected>متوسط</option><option value="3">قوي</option></select>
+    <label for="co">لونك</label>
+    <select id="co"><option value="w">أبيض</option><option value="b">أسود</option><option value="r">عشوائي</option></select>
+    <label for="ti">الوقت لكل لاعب</label>
+    <select id="ti"><option value="0">بدون ساعة</option><option value="5">5 دقايق</option><option value="10">10 دقايق</option></select>
+    <button class="btn main" id="go" type="button">ابدأ اللعب</button>
+  </section>
+  <section id="play" hidden>
+    <div class="bar"><span id="opn">الكمبيوتر</span><b class="clk" id="ck1"></b></div>
+    <div id="board"></div>
+    <div class="bar"><span>أنت</span><b class="clk" id="ck2"></b></div>
+    <div id="msg" role="status"></div>
+    <div class="btns">
+      <button class="btn" id="un" type="button">تراجع</button>
+      <button class="btn" id="hi" type="button">تلميح</button>
+      <button class="btn" id="rs" type="button">استسلام</button>
+    </div>
+    <button class="btn" id="nw" type="button" hidden>لعبة جديدة</button>
+  </section>
+  <section class="panel" id="acc"></section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.2/chess.min.js"></script>
+<script>
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+var GL={p:"♟\uFE0E",n:"♞\uFE0E",b:"♝\uFE0E",r:"♜\uFE0E",q:"♛\uFE0E",k:"♚\uFE0E"};
+var V={p:100,n:320,b:330,r:500,q:900,k:0};
+var game=null,me="w",lvl=2,sel=null,legal=[],last=null,hint=null,thinking=false,over=false,T={w:0,b:0},tmax=0,lastT=0;
+function opp(){return me==="w"?"b":"w"}
+
+function ev(g){
+  var s=0,b=g.board();
+  for(var i=0;i<8;i++)for(var j=0;j<8;j++){
+    var p=b[i][j];if(!p)continue;
+    var v=V[p.type],cd=Math.abs(3.5-i)+Math.abs(3.5-j);
+    if(p.type==="p")v+=(p.color==="w"?6-i:i-1)*8;
+    else if(p.type==="n"||p.type==="b")v+=(4-cd)*6;
+    s+=p.color==="w"?v:-v;
+  }
+  return s;
+}
+function order(ms){
+  function sc(m){return(m.captured?V[m.captured]*10-V[m.piece]:0)+(m.promotion?800:0)}
+  return ms.sort(function(a,b){return sc(b)-sc(a)});
+}
+function search(g,d,a,b){
+  var ms=order(g.moves({verbose:true}));
+  if(!ms.length)return g.in_check()?-99999-d:0;
+  if(d===0){var e=ev(g);return g.turn()==="w"?e:-e}
+  for(var k=0;k<ms.length;k++){
+    g.move(ms[k]);var s=-search(g,d-1,-b,-a);g.undo();
+    if(s>=b)return b;if(s>a)a=s;
+  }
+  return a;
+}
+function best(g,d,rnd){
+  var ms=order(g.moves({verbose:true}));
+  if(!ms.length)return null;
+  if(rnd&&Math.random()<0.3)return ms[Math.floor(Math.random()*ms.length)];
+  var bm=ms[0],bs=-1e9;
+  for(var k=0;k<ms.length;k++){
+    g.move(ms[k]);var s=-search(g,d-1,-1e9,1e9)+Math.random()*(rnd?30:6);g.undo();
+    if(s>bs){bs=s;bm=ms[k]}
+  }
+  return bm;
+}
+
+function render(){
+  var brd=game.board(),h="",ks=null;
+  if(game.in_check()){
+    for(var i=0;i<8;i++)for(var j=0;j<8;j++){var p=brd[i][j];if(p&&p.type==="k"&&p.color===game.turn())ks="abcdefgh"[j]+(8-i)}
+  }
+  for(var r=0;r<8;r++)for(var c=0;c<8;c++){
+    var f=me==="w"?c:7-c,rk=me==="w"?8-r:r+1,sq="abcdefgh"[f]+rk,pc=game.get(sq);
+    var cl="sq "+((f+rk)%2?"d":"l");
+    if(sel===sq)cl+=" sel";
+    if(legal.indexOf(sq)>=0)cl+=pc?" cap":" dot";
+    if(last&&(last[0]===sq||last[1]===sq))cl+=" lm";
+    if(hint&&(hint[0]===sq||hint[1]===sq))cl+=" ht";
+    if(ks===sq)cl+=" ck";
+    h+='<button class="'+cl+'" data-s="'+sq+'" aria-label="'+sq+'">'+(pc?'<i class="'+pc.color+'">'+GL[pc.type]+'</i>':"")+'</button>';
+  }
+  $("board").innerHTML=h;
+  if(!over)$("msg").textContent=game.turn()===me?("دورك"+(game.in_check()?" - كش!":"")):"الكمبيوتر بيفكر...";
+}
+function fmt(ms){var s=Math.ceil(Math.max(0,ms)/1000);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
+function clocks(){$("ck1").textContent=tmax?fmt(T[opp()]):"";$("ck2").textContent=tmax?fmt(T[me]):""}
+setInterval(function(){
+  if(!game||over||!tmax)return;
+  var now=Date.now(),d=now-lastT;lastT=now;
+  var t=game.turn();T[t]-=d;clocks();
+  if(T[t]<=0)finish(t===me?"tl":"tw");
+},250);
+
+function finish(k){
+  if(over)return;over=true;thinking=false;
+  var res,txt;
+  if(k==="mate"){var w=game.turn()==="w"?"b":"w";res=w===me?"win":"loss";txt=res==="win"?"كش مات! فزت 🎉":"كش مات. الكمبيوتر فاز."}
+  else if(k==="tw"){res="win";txt="انتهى وقت الكمبيوتر. فزت!"}
+  else if(k==="tl"){res="loss";txt="انتهى وقتك. خسرت."}
+  else if(k==="resign"){res="loss";txt="استسلمت."}
+  else{res="draw";txt="تعادل."}
+  render();$("msg").textContent=txt;$("nw").hidden=false;
+  if(window.onResult)window.onResult({res:res,level:lvl,color:me,moves:game.history().length});
+}
+function after(){
+  render();
+  if(game.game_over()){finish(game.in_checkmate()?"mate":"draw");return}
+  if(game.turn()!==me)cpu();
+}
+function cpu(){
+  thinking=true;$("msg").textContent="الكمبيوتر بيفكر...";
+  setTimeout(function(){
+    var m=best(game,lvl,lvl===1);
+    thinking=false;
+    if(m){game.move({from:m.from,to:m.to,promotion:"q"});last=[m.from,m.to];hint=null}
+    after();
+  },60);
+}
+
+$("board").onclick=function(e){
+  var b=e.target.closest("[data-s]");
+  if(!b||over||thinking||game.turn()!==me)return;
+  var s=b.dataset.s,p=game.get(s);
+  hint=null;
+  if(sel&&legal.indexOf(s)>=0){
+    game.move({from:sel,to:s,promotion:"q"});last=[sel,s];sel=null;legal=[];after();return;
+  }
+  if(p&&p.color===me){sel=s;legal=game.moves({square:s,verbose:true}).map(function(m){return m.to})}
+  else{sel=null;legal=[]}
+  render();
+};
+$("un").onclick=function(){
+  if(!game||over||thinking)return;
+  var n=game.turn()===me?2:1;
+  for(var k=0;k<n;k++)game.undo();
+  sel=null;legal=[];last=null;hint=null;
+  render();
+  if(game.turn()!==me)cpu();
+};
+$("hi").onclick=function(){
+  if(!game||over||thinking||game.turn()!==me)return;
+  thinking=true;$("msg").textContent="بدوّر على أحسن حركة...";
+  setTimeout(function(){
+    var m=best(new Chess(game.fen()),3,false);
+    thinking=false;hint=m?[m.from,m.to]:null;render();
+  },30);
+};
+$("rs").onclick=function(){if(game&&!over)finish("resign")};
+$("nw").onclick=function(){$("play").hidden=true;$("setup").hidden=false};
+$("go").onclick=function(){
+  lvl=+$("lv").value;var c=$("co").value;
+  me=c==="r"?(Math.random()<0.5?"w":"b"):c;
+  tmax=+$("ti").value*60000;T={w:tmax,b:tmax};lastT=Date.now();
+  game=new Chess();sel=null;legal=[];last=null;hint=null;over=false;thinking=false;
+  $("setup").hidden=true;$("play").hidden=false;$("nw").hidden=true;
+  $("opn").textContent="الكمبيوتر ("+["","سهل","متوسط","قوي"][lvl]+")";
+  render();clocks();
+  if(game.turn()!==me)cpu();
+};
+</script>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,collection,doc,addDoc,setDoc,onSnapshot,increment} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig={apiKey:"AIzaSyCX3g7SFlEoTUmVQxv7HOkjOQMXfQ3rSGE",authDomain:"test-1-fbaf8.firebaseapp.com",projectId:"test-1-fbaf8",appId:"1:723355751794:web:9114d0ba03db54b2a339eb"};
+
+const app=initializeApp(firebaseConfig),auth=getAuth(app),fs=getFirestore(app);
+const acc=$("acc");
+let stats={wins:0,losses:0,draws:0},unsub=null;
+
+function draw(u){
+  if(!u){
+    acc.innerHTML='<h2>حفظ النتايج</h2><div class="muted">سجّل دخولك بحساب Google عشان نتايجك تتحفظ. تقدر تلعب من غير حساب.</div><button class="btn" id="gl" type="button">تسجيل الدخول بحساب Google</button>';
+    $("gl").onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>{
+      acc.insertAdjacentHTML("beforeend",'<div class="muted">تعذّر تسجيل الدخول ('+esc(e.code||"خطأ")+')</div>');
+    });
+    return;
+  }
+  acc.innerHTML='<h2>'+esc(u.displayName||"لاعب")+'</h2><div class="muted">فزت: <b>'+stats.wins+'</b> · خسرت: <b>'+stats.losses+'</b> · تعادل: <b>'+stats.draws+'</b></div><button class="btn" id="so" type="button">تسجيل خروج</button>';
+  $("so").onclick=()=>signOut(auth);
+}
+onAuthStateChanged(auth,u=>{
+  if(unsub){unsub();unsub=null}
+  stats={wins:0,losses:0,draws:0};
+  draw(u);
+  if(u)unsub=onSnapshot(doc(fs,"chessStats",u.uid),s=>{
+    const d=s.data()||{};
+    stats={wins:d.wins||0,losses:d.losses||0,draws:d.draws||0};
+    draw(u);
+  },()=>{});
+});
+window.onResult=r=>{
+  const u=auth.currentUser;if(!u)return;
+  const k={win:"wins",loss:"losses",draw:"draws"}[r.res];
+  setDoc(doc(fs,"chessStats",u.uid),{[k]:increment(1)},{merge:true}).catch(()=>{});
+  addDoc(collection(fs,"chessStats",u.uid,"games"),{res:r.res,level:r.level,color:r.color,moves:r.moves,at:Date.now()}).catch(()=>{});
+};
+draw(null);
+</script>
+</body>
+</html>
